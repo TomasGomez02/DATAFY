@@ -39,13 +39,15 @@ def get_album_from_date(client: Client, date: str):
 
 def get_cancion_from_date(client: Client, date: str):
     albums = get_table_from_date(client, "Album", "fecha_lanzamiento", date)
+    """
+    SELECT c.id, c.titulo, c...
+    FROM Canciones as c
+    JOIN Album as a ON c.album_id = a.id
+    WHERE a.fecha_lanzamiento >= {date}
+    """
     # Hay que hacer un join para solo actualizar las canciones 
     # que pertenezcan a un album a partir de cierta fecha
     pass
-
-# genero
-# paises
-# colaboraciones
 
 def get_genero(client: Client):
     return get_table(client, "Genero")
@@ -53,6 +55,6 @@ def get_genero(client: Client):
 def get_paises(client: Client):
     return get_table(client, "Paises")
 
-def get_colaboraciones(client: Client):
+def get_colaboraciones_from_date(client: Client):
     # Hay que hacer un join para solo actualizar las colaboraciones a partir de cierta fecha
     pass
