@@ -1,60 +1,61 @@
 from supabase import Client
 import pandas as pd
 
-def get_table_from_date(client: Client, table_name: str, date_column_name: str, date: str) -> list[dict]:
-    return (client
+def get_new_entries(client: Client, table_name: str, last_id: int) -> list[dict]:
+    response = (client
                 .table(table_name)
                 .select("*")
-                .gte(date_column_name, date)
+                .gte("id", last_id)
                 .execute()
                 .model_dump()["data"])
+    
+    return response
 
-def get_table(client: Client, table_name: str) -> list[dict]:
-    return client.table(table_name).select("*").execute().model_dump()["data"]
+def transform(data: pd.DataFrame, drop: list[str]=None, rename: dict[str, str]=None) -> list[dict]:
+    df = data.copy()
+    if drop:
+        df.drop(drop)
+    if rename:
+        df.rename(columns=rename)
+    return df.to_dict(orient="records")
 
-def get_users_from_date(client: Client, date: str) -> list[dict]:
-    "La fecha debe estar en formato yyyy-mm-dd"
-    response = get_table_from_date(client, "Usuarios", "fecha_creacion", date)
-    df = pd.DataFrame(response)
-    transformed = df.rename(columns={"plan_id":"id_plan"})
-    return transformed.to_dict(orient="records")
+def get_new_users(clinet: Client, last_id: int) -> list[dict]:
+    data = get_new_entries(clinet, "Usuarios", last_id)
+    tf = transform(data, ["password_hash"], {"plan_id":"id_plan", "pais_id":"pais_id"})
+    return tf
 
-def get_artists_from_date(client: Client, date: str) -> list[dict]:
-    response = get_table_from_date(client, "Artistas", "fecha_creacion", date)
-    df = pd.DataFrame(response)
-    transformed = df.rename(columns={"pais":"id_pais"})
-    return transformed.to_dict(orient="records")
+def get_new_artists(client: Client, last_id: int) -> list[dict]:
+    data = get_new_entries(client, "Artistas", last_id)
+    tf = transform(data, drop=["password_hash"], rename={"pais":"pais_id"})
+    return tf
 
-def get_plan_table(client: Client):
-    response = get_table(client, "Plan")
-    df = pd.DataFrame(response)
-    transformed = df.rename(columns={"nombre":"nombre_plan"})
-    return transformed.to_dict(orient="records")
+def get_new_plan(client: Client, last_id: int) -> list[dict]:
+    data = get_new_entries(client, "Plan", last_id)
+    tf = transform(data, rename={"nombre":"nombre_plan"})
+    return tf
 
-def get_album_from_date(client: Client, date: str):
-    response = get_table_from_date(client, "Album", "fecha_lanzamiento", date)
-    df = pd.DataFrame(response)
-    transformed = df.rename(columns={"artista_id":"id_artista"})
-    return transformed.to_dict(orient="records")
+def get_new_albumes(client: Client, last_id: int) -> list[dict]:
+    data = get_new_entries(client, "Albumes", last_id)
+    tf = transform(data, rename={"artista_id":"id_artista"})
+    return tf
 
-def get_cancion_from_date(client: Client, date: str):
-    albums = get_table_from_date(client, "Album", "fecha_lanzamiento", date)
-    """
-    SELECT c.id, c.titulo, c...
-    FROM Canciones as c
-    JOIN Album as a ON c.album_id = a.id
-    WHERE a.fecha_lanzamiento >= {date}
-    """
-    # Hay que hacer un join para solo actualizar las canciones 
-    # que pertenezcan a un album a partir de cierta fecha
-    pass
+def get_new_cancion(client: Client, last_id: int) -> list[dict]:
+    data = get_new_entries(client, "Canciones", last_id)
+    tf = transform(data, rename={"genero_id":"id_genero", "artista_principal_id":"id_artista_principal",
+                                 "album_id":"id_album"})
+    return tf
 
-def get_genero(client: Client):
-    return get_table(client, "Genero")
+def get_new_genero(client: Client, last_id: int) -> list[dict]:
+    data = get_new_entries(client, "Genero", last_id)
+    tf = transform(data)
+    return tf
 
-def get_paises(client: Client):
-    return get_table(client, "Paises")
+def get_new_paises(client: Client, last_id: int) -> list[dict]:
+    data = get_new_entries(client, "Paises", last_id)
+    tf = transform(data)
+    return tf
 
-def get_colaboraciones_from_date(client: Client):
-    # Hay que hacer un join para solo actualizar las colaboraciones a partir de cierta fecha
-    pass
+def get_new_colaboraciones(client: Client, last_id: int) -> list[dict]:
+    data = get_new_entries(client, "Colaboraciones", last_id)
+    tf = transform(data, rename={"cancion_id":"id_cancion", "artista_id":"id_artista"})
+    return tf

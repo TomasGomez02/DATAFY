@@ -10,14 +10,12 @@ def main():
     url_warehouse = os.environ.get("SUPABASE_URL_WAREHOUSE")
     key_warehouse = os.environ.get("SUPABASE_KEY_WAREHOUSE")
     
-    client_database = create_client(url_source, key_source)
-    client_warehouse = create_client(url_warehouse, key_warehouse)
+    client_db = create_client(url_source, key_source)
+    client_wh = create_client(url_warehouse, key_warehouse)
     
-    last_id = warehouse.last_id(client_warehouse, "dim_plan")
-    # new_data = database.get_new_entries(client_database, "Usuarios", last_id)
-    # warehouse.load_table(client_warehouse, "dim_usuarios", new_data)
-    
-    
+    last_id = warehouse.last_id(client_wh, "dim_usuarios")
+    new_data = database.get_new_users(client_db, last_id)
+    warehouse.load_table(client_wh, "dim_usuarios", new_data)
 
 
 if __name__ == "__main__":
