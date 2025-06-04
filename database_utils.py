@@ -11,22 +11,22 @@ def get_new_entries(client: Client, table_name: str, last_id: int) -> list[dict]
     
     return response
 
-def transform(data: pd.DataFrame, drop: list[str]=None, rename: dict[str, str]=None) -> list[dict]:
-    df = data.copy()
+def transform(data: list[dict], drop: list[str]=None, rename: dict[str, str]=None) -> list[dict]:
+    df = pd.DataFrame(data)
     if drop:
-        df.drop(drop)
+        df = df.drop(drop, axis=1)
     if rename:
-        df.rename(columns=rename)
+        df = df.rename(columns=rename)
     return df.to_dict(orient="records")
 
 def get_new_users(clinet: Client, last_id: int) -> list[dict]:
     data = get_new_entries(clinet, "Usuarios", last_id)
-    tf = transform(data, ["password_hash"], {"plan_id":"id_plan", "pais_id":"pais_id"})
+    tf = transform(data, ["password_hash"], {"plan_id":"id_plan", "pais_id":"id_pais"})
     return tf
 
 def get_new_artistas(client: Client, last_id: int) -> list[dict]:
     data = get_new_entries(client, "Artistas", last_id)
-    tf = transform(data, drop=["password_hash"], rename={"pais":"pais_id"})
+    tf = transform(data, drop=["password_hash"], rename={"pais":"id_pais"})
     return tf
 
 def get_new_plan(client: Client, last_id: int) -> list[dict]:
