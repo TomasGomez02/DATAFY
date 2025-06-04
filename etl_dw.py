@@ -1,7 +1,9 @@
 import os
 from supabase import create_client
+import pymongo
 import database_utils as database
 import warehouse_utils as warehouse
+import mongo_utils as mongo
 
 # TABLE_NAMES = {
 #     "Artistas":"dim_artistas",
@@ -15,7 +17,7 @@ import warehouse_utils as warehouse
 # }
 
 # Este orden es muy importante
-TABLE_NAMES = {
+TABLE_NAMES_SQL = {
     "dim_plan":database.get_new_plan,
     "dim_genero":database.get_new_genero,
     "dim_paises":database.get_new_paises,
@@ -35,11 +37,30 @@ def main():
     client_db = create_client(url_source, key_source)
     client_wh = create_client(url_warehouse, key_warehouse)
     
-    for wh_table_name, func in TABLE_NAMES.items():
+    for wh_table_name, func in TABLE_NAMES_SQL.items():
         last_id = warehouse.last_id(client_wh, wh_table_name)
         new_data = func(client_db, last_id)
         warehouse.load_table(client_wh, wh_table_name, new_data)
         print("Updated: " + wh_table_name)
+    
+    
+    mongo_uri = os.environ.get("MONGODB_URI")
+    client = pymongo.MongoClient(mongo_uri)
+    db = client["DATAFY"]
+    
+    last_id = warehouse.last_id(client_wh, "dim_playlist")
+    new_playlist_data, new_play_cancion_data = mongo.get_new_playlist(db, last_id)
+    warehouse.load_table(client_wh, "dim_playlist", new_playlist_data)
+    print("Updated: dim_playlist")
+    
+    warehouse.load_table(client_wh, "dim_playlist_canciones", new_play_cancion_data)
+    print("Updated: dim_playlist_canciones")
+    
+    last_id = warehouse.last_id(client_wh, "hechos_reproducciones")
+    new_reproduccion_data = mongo.get_new_historial(db, last_id)
+    warehouse.load_table(client_wh, "hechos_reproducciones", new_reproduccion_data)
+    print("Updated: hechos_reproducciones")
+    
 
 
 if __name__ == "__main__":
