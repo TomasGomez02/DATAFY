@@ -3,8 +3,6 @@ from supabase import create_client
 import database_utils as database
 import warehouse_utils as warehouse
 
-from pprint import pprint
-import pandas as pd
 
 def main():
     url_source = os.environ.get("SUPABASE_URL_SOURCE")
@@ -15,8 +13,9 @@ def main():
     client_database = create_client(url_source, key_source)
     client_warehouse = create_client(url_warehouse, key_warehouse)
     
-    response = database.get_plan_table(client_database)
-    warehouse.load_table(client_warehouse, "dim_plan", response)
+    last_id = warehouse.last_id(client_warehouse, "dim_plan")
+    # new_data = database.get_new_entries(client_database, "Usuarios", last_id)
+    # warehouse.load_table(client_warehouse, "dim_usuarios", new_data)
     
     
 
