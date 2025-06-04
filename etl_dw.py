@@ -14,6 +14,7 @@ import warehouse_utils as warehouse
 #     "Usuarios":"dim_usuarios"
 # }
 
+# Este orden es muy importante
 TABLE_NAMES = {
     "dim_plan":database.get_new_plan,
     "dim_genero":database.get_new_genero,
@@ -26,7 +27,6 @@ TABLE_NAMES = {
 }
 
 def main():
-    from pprint import pprint
     url_source = os.environ.get("SUPABASE_URL_SOURCE")
     key_source = os.environ.get("SUPABASE_KEY_SOURCE")
     url_warehouse = os.environ.get("SUPABASE_URL_WAREHOUSE")
@@ -38,7 +38,6 @@ def main():
     for wh_table_name, func in TABLE_NAMES.items():
         last_id = warehouse.last_id(client_wh, wh_table_name)
         new_data = func(client_db, last_id)
-        # new_data = database.get_new_users(client_db, last_id)
         warehouse.load_table(client_wh, wh_table_name, new_data)
         print("Updated: " + wh_table_name)
 
