@@ -1,16 +1,25 @@
 import os
-from supabase import create_client, Client
+from supabase import create_client
+import database_utils as database
+import warehouse_utils as warehouse
 
-url = os.environ.get("SUPABASE_URL")
-key = os.environ.get("SUPABASE_KEY")
+from pprint import pprint
+import pandas as pd
 
-cliente: Client = create_client(url, key)
+def main():
+    url_source = os.environ.get("SUPABASE_URL_SOURCE")
+    key_source = os.environ.get("SUPABASE_KEY_SOURCE")
+    url_warehouse = os.environ.get("SUPABASE_URL_WAREHOUSE")
+    key_warehouse = os.environ.get("SUPABASE_KEY_WAREHOUSE")
+    
+    client_database = create_client(url_source, key_source)
+    client_warehouse = create_client(url_warehouse, key_warehouse)
+    
+    response = database.get_plan_table(client_database)
+    warehouse.load_table(client_warehouse, "dim_plan", response)
+    
+    
 
-response = (
-    cliente.table("Paises")
-    .select("id", "nombre")
-    .eq("id", 89)
-    .execute()
-)
 
-print(response)
+if __name__ == "__main__":
+    main()
