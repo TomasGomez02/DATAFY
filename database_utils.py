@@ -24,7 +24,7 @@ def get_new_users(clinet: Client, last_id: int) -> list[dict]:
     tf = transform(data, ["password_hash"], {"plan_id":"id_plan", "pais_id":"pais_id"})
     return tf
 
-def get_new_artists(client: Client, last_id: int) -> list[dict]:
+def get_new_artistas(client: Client, last_id: int) -> list[dict]:
     data = get_new_entries(client, "Artistas", last_id)
     tf = transform(data, drop=["password_hash"], rename={"pais":"pais_id"})
     return tf
