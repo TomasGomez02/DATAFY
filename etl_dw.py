@@ -18,15 +18,17 @@ from exceptions import NoNewDataException
 # }
 
 # Este orden es muy importante
-TABLE_NAMES_SQL = {
+
+TABLE_NAMES_SQL_1 = {
     "dim_plan":database.get_new_plan,
     "dim_genero":database.get_new_genero,
-    "dim_paises":database.get_new_paises,
-    "dim_artistas":database.get_new_artistas,
+    "dim_paises":database.get_new_paises
+}
+
+TABLE_NAMES_SQL_2 = {
     "dim_album":database.get_new_albumes,
     "dim_canciones":database.get_new_cancion,
     "dim_colaboraciones":database.get_new_colaboraciones,
-    "dim_usuarios":database.get_new_users,
 }
 
 def main():
@@ -38,7 +40,7 @@ def main():
     client_db = create_client(url_source, key_source)
     client_wh = create_client(url_warehouse, key_warehouse)
     
-    for wh_table_name, func in TABLE_NAMES_SQL.items():
+    for wh_table_name, func in TABLE_NAMES_SQL_1.items():
         try:
             last_id = warehouse.last_id(client_wh, wh_table_name)
             new_data = func(client_db, last_id)
@@ -46,6 +48,26 @@ def main():
             print("Updated: " + wh_table_name)
         except NoNewDataException as e:
             print(e)
+    
+    for new_data in database.get_all_table(client_db, "Artistas"):
+        tf = database.transform(new_data, drop=["password_hash"], rename={"pais":"id_pais"})
+        
+        warehouse.load_table(client_wh, "dim_artistas", tf)
+        print("Updated: " + "dim_artistas")
+    
+    for wh_table_name, func in TABLE_NAMES_SQL_2.items():
+        try:
+            last_id = warehouse.last_id(client_wh, wh_table_name)
+            new_data = func(client_db, last_id)
+            warehouse.load_table(client_wh, wh_table_name, new_data)
+            print("Updated: " + wh_table_name)
+        except NoNewDataException as e:
+            print(e)
+    
+    for new_data in database.get_all_table(client_db, "Usuarios"):
+        tf = database.transform(new_data, ["password_hash"], {"plan_id":"id_plan", "pais_id":"id_pais"})
+        warehouse.load_table(client_wh, "dim_usuarios", tf)
+        print("Updated: " + "dim_usuarios")
     
     
     mongo_uri = os.environ.get("MONGODB_URI")
