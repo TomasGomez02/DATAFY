@@ -1,4 +1,5 @@
 import os
+import pandas as pd
 from supabase import create_client
 import pymongo
 import database_utils as database
@@ -17,16 +18,34 @@ from exceptions import NoNewDataException
 #     "Usuarios":"dim_usuarios"
 # }
 
+def process_canciones(old_data: list[dict], new_data: list[dict]) -> tuple[list[dict], list[int]]:
+    old_df = pd.DataFrame(data=old_data)
+    new_df = pd.DataFrame(data=new_data)
+
+    old_df["key"] = old_df["cancion_id"].astype(str) + "-" + old_df["playlist_id"].astype(str)
+    new_df["key"] = new_df["cancion_id"].astype(str) + "-" + new_df ["playlist_id"].astype(str)
+
+    df_deleted = old_df[~old_df["key"].isin(new_df["key"])]
+    df_added = new_df[~new_df["key"].isin(old_df["key"])]
+
+    df_added = df_added.drop(columns=["key"])
+
+    deleted = df_deleted["id"].to_list()
+    added = df_added.to_dict('records')
+
+    return added, deleted
+
+
 # Este orden es muy importante
 TABLE_NAMES_SQL = {
     "dim_plan":database.get_new_plan,
     "dim_genero":database.get_new_genero,
     "dim_paises":database.get_new_paises,
-    "dim_artistas":database.get_new_artistas,
+    "dim_artistas":database.get_new_artistas, # Sacar para hacer upsert
     "dim_album":database.get_new_albumes,
     "dim_canciones":database.get_new_cancion,
     "dim_colaboraciones":database.get_new_colaboraciones,
-    "dim_usuarios":database.get_new_users,
+    "dim_usuarios":database.get_new_users, # Sacar para hacer upsert
 }
 
 def main():
@@ -52,17 +71,6 @@ def main():
     client = pymongo.MongoClient(mongo_uri)
     db = client["DATAFY"]
     
-    last_id = warehouse.last_id(client_wh, "dim_playlist")
-    try:
-        new_playlist_data, new_play_cancion_data = mongo.get_new_playlist(db, last_id)
-        warehouse.load_table(client_wh, "dim_playlist", new_playlist_data)
-        print("Updated: dim_playlist")
-        
-        warehouse.load_table(client_wh, "dim_playlist_canciones", new_play_cancion_data)
-        print("Updated: dim_playlist_canciones")
-    except NoNewDataException as e:
-        print(e)
-    
     try:
         last_id = warehouse.last_id(client_wh, "hechos_reproducciones")
         new_reproduccion_data = mongo.get_new_historial(db, last_id)
@@ -71,6 +79,19 @@ def main():
     except NoNewDataException as e:
         print(e)
 
+    try:
+        playlist_data, play_cancion_data = mongo.get_playlist(db)
+        warehouse.load_table(client_wh, "dim_playlist", playlist_data)
+        print("Updated: dim_playlist")
+        
+        old_play_cancion_data = warehouse.get_all_playlist_songs(client_wh)
+        added, deleted = process_canciones(old_play_cancion_data, play_cancion_data)
+        warehouse.load_table(client_wh, "dim_playlist_canciones", added)
+        warehouse.delete_from_table(client_wh, "dim_playlist_canciones", deleted)
+
+        print("Updated: dim_playlist_canciones")
+    except NoNewDataException as e:
+        print(e)
 
 
 if __name__ == "__main__":
