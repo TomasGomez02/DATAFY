@@ -62,3 +62,24 @@ def get_new_colaboraciones(client: Client, last_id: int) -> list[dict]:
     data = get_new_entries(client, "Colaboraciones", last_id)
     tf = transform(data, rename={"cancion_id":"id_cancion", "artista_id":"id_artista"})
     return tf
+
+def get_all_table(client: Client, table_name: str):
+    end_id = (client
+              .table(table_name)
+              .select("id")
+              .order("id", desc=True)
+              .limit(1)
+              .execute()
+              .model_dump()["data"])
+    end_id = end_id[0]["id"] if len(end_id) > 0 else 0
+    n = 1
+    while n < end_id:
+        response: list[dict] = (client
+                    .table(table_name)
+                    .select("*")
+                    .range(n, n+1000)
+                    .execute()
+                    .model_dump()["data"])
+        
+        yield response
+        n += 1000
