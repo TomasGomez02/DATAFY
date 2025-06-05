@@ -1,14 +1,17 @@
 from supabase import Client
 import pandas as pd
+from exceptions import NoNewDataException
 
 def get_new_entries(client: Client, table_name: str, last_id: int) -> list[dict]:
     response = (client
                 .table(table_name)
                 .select("*")
-                .gte("id", last_id)
+                .gt("id", last_id)
                 .execute()
                 .model_dump()["data"])
     
+    if len(response) == 0:
+        raise NoNewDataException("No hay datos nuevos para cargar en: " + table_name)
     return response
 
 def transform(data: list[dict], drop: list[str]=None, rename: dict[str, str]=None) -> list[dict]:

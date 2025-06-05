@@ -7,14 +7,18 @@ from supabase import create_client
 from pymongo.collection import Collection
 from pymongo.database import Database
 from pprint import pprint
+from exceptions import NoNewDataException
+
 
 def get_new_entries(db: Collection, last_id: int):
-    response = db.find({"_id":{"$gt":last_id}})
+    response = list(db.find({"_id":{"$gt":last_id}}))
+    if len(response) == 0:
+        raise NoNewDataException("No hay datos nuevos para cargar en: " + db.name)
     return response
 
 def get_new_playlist(db: Database, last_id: int) -> tuple[list[dict], list[dict]]:
     cursor = get_new_entries(db["playlist"], last_id)
-    df = pd.DataFrame(list(cursor))
+    df = pd.DataFrame(cursor)
     df.rename(columns={"_id": "id", "public": "publico", "song_id":"canciones_id"}, inplace=True)
     df_play_canciones = df[["id", "canciones_id"]]
     df = df.drop(["canciones_id"], axis=1)
@@ -25,7 +29,7 @@ def get_new_playlist(db: Database, last_id: int) -> tuple[list[dict], list[dict]
 
 def get_new_historial(db: Database, last_id: int) -> list[dict]:
     cursor = get_new_entries(db["historial"], last_id)
-    df = pd.DataFrame(list(cursor))
+    df = pd.DataFrame(cursor)
     
     df.rename(columns={"_id": "id"}, inplace=True)
     df = df.astype({"playlist_id":"Int64"})
@@ -44,7 +48,7 @@ def main():
     client = create_client(url_warehouse, key_warehouse)
 
     last_id = warehouse.last_id(client, "dim_playlist")
-    playlist, play_canciones = get_new_historial(db, last_id)
+    playlist, play_canciones = get_new_playlist(db, last_id)
 
 if __name__ == "__main__":
     main()
